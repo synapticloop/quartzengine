@@ -22,8 +22,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marker annotation: if present, the job fires immediately
- * upon application startup, then follows its Cron schedule.
+ * <p>A marker annotation that indicates a {@link QuartzJob} should be executed
+ * immediately upon application startup.</p>
+ *
+ * <p>When the {@code QuartzEngine} discovers this annotation on a method, it will
+ * schedule the job normally according to its Cron expression, but will also
+ * issue an immediate manual trigger call.</p>
+ *
+ * <p>Note: This must be used in conjunction with {@literal @}QuartzJob to have any effect.</p>
+ * <pre>
+ * &#64;QuartzJobRunNow
+ * &#64;QuartzJob(cronExpression = "0 0 12 * * ?")
+ * public void dailyReport() { ... }
+ * </pre>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
