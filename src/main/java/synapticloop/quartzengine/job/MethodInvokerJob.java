@@ -21,6 +21,7 @@ import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import synapticloop.quartzengine.engine.QuartzEngine;
+import synapticloop.quartzengine.metric.JobMetric;
 
 import java.lang.reflect.Method;
 
@@ -30,10 +31,13 @@ public class MethodInvokerJob implements Job {
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 		JobKey key = context.getJobDetail().getKey();
+		java.time.Instant start = java.time.Instant.now();
+		boolean success = false;
+		String errorMsg = null;
 
 		LOGGER.debug("Job: {} executing", key);
-
 		try {
+
 			JobDataMap dataMap = context.getMergedJobDataMap();
 			Object targetObject = dataMap.get(QuartzEngine.TARGET_OBJECT);
 			Method method = (Method) dataMap.get(QuartzEngine.TARGET_METHOD);
@@ -57,12 +61,28 @@ public class MethodInvokerJob implements Job {
 				method.invoke(targetObject);
 			}
 
+			success = true;
 			LOGGER.debug("Successfully executed: {}", method.getName());
 
 		} catch (Exception e) {
 			LOGGER.error("Failed to execute job: {}", key);
 			// We wrap the exception so the GlobalJobListener catches it
+			errorMsg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
 			throw new JobExecutionException(e);
+		} finally {
+			long duration = java.time.Duration.between(start, java.time.Instant.now()).toMillis();
+
+			// Save the metric back to the singleton engine
+			try {
+				QuartzEngine.getInstance().recordMetric(new JobMetric(
+						key.getName(),
+						key.getGroup(),
+						start,
+						duration,
+						success,
+						errorMsg
+				));
+			} catch (Exception ignored) {}
 		}
 	}
 }

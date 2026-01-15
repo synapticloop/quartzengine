@@ -28,6 +28,7 @@ import synapticloop.quartzengine.annotation.QuartzEngineJobRunNow;
 import synapticloop.quartzengine.job.JobDetailRecord;
 import synapticloop.quartzengine.job.MethodInvokerJob;
 import synapticloop.quartzengine.listener.GlobalJobListener;
+import synapticloop.quartzengine.metric.JobMetric;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -35,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * <p>The {@code QuartzEngine} serves as a centralized manager for the Quartz Scheduler,
@@ -67,6 +71,10 @@ public class QuartzEngine {
 	public static final String PARAMS_ARRAY = "paramsArray";
 	public static final String TRIGGER = "Trigger";
 	public static final String STATUS_UNKNOWN = "UNKNOWN";
+
+	// Inside QuartzEngine class:
+	public static final int MAX_METRICS = 100;
+	private final LinkedBlockingDeque<JobMetric> executionHistory = new LinkedBlockingDeque<>(MAX_METRICS);
 
 	private static QuartzEngine instance;
 	private final Scheduler scheduler;
@@ -255,7 +263,26 @@ public class QuartzEngine {
 		return jobList;
 	}
 
+	/**
+	 * Records a completed execution. If the buffer is full, the oldest entry is removed.
+	 */
+	public void recordMetric(JobMetric metric) {
+		while (executionHistory.size() >= MAX_METRICS) {
+			executionHistory.pollFirst(); // Remove oldest
+		}
+		executionHistory.addLast(metric); // Add newest
+	}
+
+	/**
+	 * Returns a copy of the recent execution history.
+	 */
+	public List<JobMetric> getExecutionHistory() {
+		return new ArrayList<>(executionHistory);
+	}
+
 	public void shutdown() throws SchedulerException {
 		scheduler.shutdown(true);
 	}
+
+
 }
