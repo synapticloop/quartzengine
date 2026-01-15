@@ -22,7 +22,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * <p>A marker annotation that indicates a {@link QuartzJob} should be executed
+ * <p>A marker annotation that indicates a {@link QuartzEngineJob} should be executed
  * immediately upon application startup.</p>
  *
  * <p>When the {@code QuartzEngine} discovers this annotation on a method, it will
@@ -38,5 +38,5 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface QuartzJobRunNow {
+public @interface QuartzEngineJobRunNow {
 }

@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface QuartzJob {
+public @interface QuartzEngineJob {
 	String UNDEFINED = "undefined";
 
 	/**

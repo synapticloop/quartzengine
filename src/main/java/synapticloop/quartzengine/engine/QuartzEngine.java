@@ -23,8 +23,8 @@ import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import synapticloop.quartzengine.annotation.QuartzJob;
-import synapticloop.quartzengine.annotation.QuartzJobRunNow;
+import synapticloop.quartzengine.annotation.QuartzEngineJob;
+import synapticloop.quartzengine.annotation.QuartzEngineJobRunNow;
 import synapticloop.quartzengine.job.JobDetailRecord;
 import synapticloop.quartzengine.job.MethodInvokerJob;
 import synapticloop.quartzengine.listener.GlobalJobListener;
@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>This engine implements a Singleton pattern to ensure that only one instance of the
  * scheduler and its associated thread pool exist within the JVM. It utilizes the
  * {@code Reflections} library to scan specified packages for methods decorated with
- * {@link QuartzJob}.</p>
+ * {@link QuartzEngineJob}.</p>
  *
  * <p>Key Features:</p>
  *
@@ -130,7 +130,7 @@ public class QuartzEngine {
 		LOGGER.info("Searching for jobs in: {}", packageToScan);
 
 		Reflections reflections = new Reflections(packageToScan, Scanners.MethodsAnnotated);
-		Set<Method> jobMethods = reflections.getMethodsAnnotatedWith(QuartzJob.class);
+		Set<Method> jobMethods = reflections.getMethodsAnnotatedWith(QuartzEngineJob.class);
 
 		if (jobMethods.isEmpty()) {
 			LOGGER.info("No @QuartzJob annotations found! Check your package names.");
@@ -163,8 +163,11 @@ public class QuartzEngine {
 	}
 
 	private void registerJob(Object jobInstance, Method method) throws SchedulerException {
-		QuartzJob config = method.getAnnotation(QuartzJob.class);
-		JobKey jobKey = new JobKey(method.getName(), config.group());
+		QuartzEngineJob config = method.getAnnotation(QuartzEngineJob.class);
+		String jobName = jobInstance.getClass().getSimpleName() + "." + method.getName();
+		JobKey jobKey = new JobKey(
+				jobName,
+				config.group());
 
 		// Final safety check: skip if the job name/group is already in Quartz
 		if (scheduler.checkExists(jobKey)) {
@@ -181,13 +184,13 @@ public class QuartzEngine {
 		job.getJobDataMap().put(PARAMS_ARRAY, config.parameters()); // String[] stored here
 
 		Trigger trigger = TriggerBuilder.newTrigger()
-				.withIdentity(method.getName() + TRIGGER, config.group())
+				.withIdentity(jobName + TRIGGER, config.group())
 				.withSchedule(CronScheduleBuilder.cronSchedule(config.cronExpression()))
 				.build();
 
 		scheduler.scheduleJob(job, trigger);
 
-		if (method.isAnnotationPresent(QuartzJobRunNow.class)) {
+		if (method.isAnnotationPresent(QuartzEngineJobRunNow.class)) {
 			LOGGER.info("QuartzJobRunNow detected. Triggering: {}", method.getName());
 			scheduler.triggerJob(jobKey);
 		}
