@@ -74,7 +74,7 @@ public class MethodInvokerJob implements Job {
 
 			// Save the metric back to the singleton engine
 			try {
-				QuartzEngine.getInstance().recordMetric(new JobMetric(
+				QuartzEngine.getInstance().getStats().addMetric(new JobMetric(
 						key.getName(),
 						key.getGroup(),
 						start,

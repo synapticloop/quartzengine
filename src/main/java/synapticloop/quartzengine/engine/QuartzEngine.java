@@ -29,6 +29,7 @@ import synapticloop.quartzengine.job.JobDetailRecord;
 import synapticloop.quartzengine.job.MethodInvokerJob;
 import synapticloop.quartzengine.listener.GlobalJobListener;
 import synapticloop.quartzengine.metric.JobMetric;
+import synapticloop.quartzengine.metric.JobMetricStatistics;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -74,7 +75,7 @@ public class QuartzEngine {
 
 	// Inside QuartzEngine class:
 	public static final int MAX_METRICS = 100;
-	private final LinkedBlockingDeque<JobMetric> executionHistory = new LinkedBlockingDeque<>(MAX_METRICS);
+	private final JobMetricStatistics stats = new JobMetricStatistics();
 
 	private static QuartzEngine instance;
 	private final Scheduler scheduler;
@@ -263,23 +264,10 @@ public class QuartzEngine {
 		return jobList;
 	}
 
-	/**
-	 * Records a completed execution. If the buffer is full, the oldest entry is removed.
-	 */
-	public void recordMetric(JobMetric metric) {
-		while (executionHistory.size() >= MAX_METRICS) {
-			executionHistory.pollFirst(); // Remove oldest
-		}
-		executionHistory.addLast(metric); // Add newest
-	}
 
-	/**
-	 * Returns a copy of the recent execution history.
-	 */
-	public List<JobMetric> getExecutionHistory() {
-		return new ArrayList<>(executionHistory);
+	public JobMetricStatistics getStats() {
+		return stats;
 	}
-
 	public void shutdown() throws SchedulerException {
 		scheduler.shutdown(true);
 	}

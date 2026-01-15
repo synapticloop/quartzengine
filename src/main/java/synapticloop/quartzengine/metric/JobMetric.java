@@ -3,7 +3,7 @@ package synapticloop.quartzengine.metric;
 import java.time.Instant;
 
 /**
- * Represents a historical snapshot of a single job execution.
+ * An immutable snapshot of a single job execution.
  */
 public record JobMetric(
 		String name,
