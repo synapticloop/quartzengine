@@ -21,10 +21,13 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import synapticloop.quartzengine.annotation.QuartzJob;
 import synapticloop.quartzengine.annotation.QuartzJobRunNow;
 import synapticloop.quartzengine.job.JobDetailRecord;
 import synapticloop.quartzengine.job.MethodInvokerJob;
+import synapticloop.quartzengine.listener.GlobalJobListener;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -57,10 +60,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author synapticloop
  */
 public class QuartzEngine {
+	private static final Logger LOGGER = LoggerFactory.getLogger(QuartzEngine.class);
+
 	public static final String TARGET_OBJECT = "targetObject";
 	public static final String TARGET_METHOD = "targetMethod";
 	public static final String PARAMS_ARRAY = "paramsArray";
 	public static final String TRIGGER = "Trigger";
+	public static final String STATUS_UNKNOWN = "UNKNOWN";
 
 	private static QuartzEngine instance;
 	private final Scheduler scheduler;
@@ -73,6 +79,9 @@ public class QuartzEngine {
 
 	private QuartzEngine() throws SchedulerException {
 		this.scheduler = StdSchedulerFactory.getDefaultScheduler();
+
+		this.scheduler.getListenerManager().addJobListener(new GlobalJobListener());
+
 		this.scheduler.start();
 	}
 
@@ -109,19 +118,29 @@ public class QuartzEngine {
 		for (String pkg : packagesToScan) {
 			// add() returns true if the set did not already contain the package
 			if (scannedPackages.add(pkg)) {
-				System.out.println("[QuartzEngine] New package detected. Scanning: " + pkg);
+				LOGGER.info("New package detected. Scanning: {}", pkg);
 				scanAndRegister(pkg);
-			} else {
-				System.out.println("[QuartzEngine] Skipping already scanned package: " + pkg);
-			}
-		}
+	} else {
+		LOGGER.info("Skipping already scanned package: {}", pkg);
+	}
+}
 	}
 
 	private void scanAndRegister(String packageToScan) {
+		LOGGER.info("Searching for jobs in: {}", packageToScan);
+
 		Reflections reflections = new Reflections(packageToScan, Scanners.MethodsAnnotated);
 		Set<Method> jobMethods = reflections.getMethodsAnnotatedWith(QuartzJob.class);
 
+		if (jobMethods.isEmpty()) {
+			LOGGER.info("No @QuartzJob annotations found! Check your package names.");
+		}
+
 		for (Method method : jobMethods) {
+			LOGGER.info("Found Method: {} in class {}",
+					method.getName(),
+					method.getDeclaringClass().getSimpleName());
+
 			try {
 				Class<?> clazz = method.getDeclaringClass();
 
@@ -129,8 +148,7 @@ public class QuartzEngine {
 					try {
 						return k.getDeclaredConstructor().newInstance();
 					} catch (Exception e) {
-						System.err.println("[QuartzEngine] Failed to instantiate " + k.getName()
-								+ ". Ensure it has a public no-arg constructor.");
+						LOGGER.error("Failed to instantiate {}. Ensure it has a public no-arg constructor.", k.getName());
 						return null;
 					}
 				});
@@ -139,8 +157,7 @@ public class QuartzEngine {
 					registerJob(jobInstance, method);
 				}
 			} catch (Exception e) {
-				System.err.println("[QuartzEngine] Error processing method: " + method.getName());
-				e.printStackTrace();
+				LOGGER.error("Error processing method: {}", method.getName(), e);
 			}
 		}
 	}
@@ -171,7 +188,7 @@ public class QuartzEngine {
 		scheduler.scheduleJob(job, trigger);
 
 		if (method.isAnnotationPresent(QuartzJobRunNow.class)) {
-			System.out.println("[QuartzEngine] QuartzJobRunNow detected. Triggering " + method.getName());
+			LOGGER.info("QuartzJobRunNow detected. Triggering: {}", method.getName());
 			scheduler.triggerJob(jobKey);
 		}
 	}
@@ -213,7 +230,7 @@ public class QuartzEngine {
 					// 2. Determine Next Run and Status
 					java.util.Date nextRun = (firstTrigger != null) ? firstTrigger.getNextFireTime() : null;
 
-					String status = "UNKNOWN";
+					String status = STATUS_UNKNOWN;
 					if (firstTrigger != null) {
 						Trigger.TriggerState state = scheduler.getTriggerState(firstTrigger.getKey());
 						status = state.name();
@@ -229,7 +246,7 @@ public class QuartzEngine {
 				}
 			}
 		} catch (SchedulerException e) {
-			System.err.println("[QuartzEngine] Error retrieving job list: " + e.getMessage());
+			LOGGER.error("Error retrieving job list: {}", e.getMessage());
 		}
 
 		return jobList;

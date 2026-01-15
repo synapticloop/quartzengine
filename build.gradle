@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'synapticloop.quartzengine'
-version = '1.0.1'
+version = '1.0.2'
 
 repositories {
 	mavenLocal()
@@ -16,10 +16,18 @@ repositories {
 dependencies {
 	implementation 'org.quartz-scheduler:quartz:2.5.2'
 	implementation 'org.reflections:reflections:0.10.2'
+	implementation 'org.slf4j:slf4j-api:2.0.17'
+
 
 	testImplementation platform('org.junit:junit-bom:5.10.0')
 	testImplementation 'org.junit.jupiter:junit-jupiter'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+
+	// 3. Log4j 2 Core and API
+	testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.25.3'
+	testImplementation 'org.apache.logging.log4j:log4j-api:2.20.0'
+	testImplementation 'org.apache.logging.log4j:log4j-core:2.20.0'
 }
 
 test {

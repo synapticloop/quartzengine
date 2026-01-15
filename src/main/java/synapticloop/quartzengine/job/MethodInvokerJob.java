@@ -17,26 +17,51 @@ package synapticloop.quartzengine.job;
  */
 
 import org.quartz.*;
+import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import synapticloop.quartzengine.engine.QuartzEngine;
 
 import java.lang.reflect.Method;
 
 public class MethodInvokerJob implements Job {
+	private static final Logger LOGGER = LoggerFactory.getLogger(MethodInvokerJob.class);
+
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
+		JobKey key = context.getJobDetail().getKey();
+
+		LOGGER.debug("Job: {} executing", key);
+
 		try {
 			JobDataMap dataMap = context.getMergedJobDataMap();
 			Object targetObject = dataMap.get(QuartzEngine.TARGET_OBJECT);
-			Method method = (Method) dataMap.get(QuartzEngine.TARGET_OBJECT);
+			Method method = (Method) dataMap.get(QuartzEngine.TARGET_METHOD);
+			String[] params = (String[]) dataMap.get(QuartzEngine.PARAMS_ARRAY);
 
-			// Retrieve the String array
-//			String[] params = (String[]) dataMap.get(QuartzEngine.PARAMS_ARRAY);
+			if (targetObject == null || method == null) {
+				throw new JobExecutionException("Target Object or Method was missing from JobDataMap!");
+			}
 
-			// Logic to invoke the method...
-			// If your method takes the String[] as an argument, pass it here
-			method.invoke(targetObject);
+			LOGGER.debug("Attempting to invoke {}.{}", targetObject.getClass().getSimpleName(), method.getName());
+
+			// Check if method is accessible (handles package-private or protected if necessary)
+			if (!method.canAccess(targetObject)) {
+				method.setAccessible(true);
+			}
+
+			// Invoke the method
+			if (method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(JobExecutionContext.class)) {
+				method.invoke(targetObject, context);
+			} else {
+				method.invoke(targetObject);
+			}
+
+			LOGGER.debug("Successfully executed: {}", method.getName());
 
 		} catch (Exception e) {
+			LOGGER.error("Failed to execute job: {}", key);
+			// We wrap the exception so the GlobalJobListener catches it
 			throw new JobExecutionException(e);
 		}
 	}
