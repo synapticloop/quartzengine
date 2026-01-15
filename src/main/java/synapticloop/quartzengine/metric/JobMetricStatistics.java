@@ -1,5 +1,7 @@
 package synapticloop.quartzengine.metric;
 
+import synapticloop.quartzengine.metric.JobMetric;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -14,20 +16,32 @@ public class JobMetricStatistics {
 		synchronized (metrics) {
 			if (metrics.size() >= MAX_METRICS) {
 				metrics.remove(0);
+			} else {
+				metrics.add(metric);
 			}
-			metrics.add(metric);
 		}
 	}
 
-	public List<JobMetric> getMetrics() {
-		synchronized (metrics) {
-			return new ArrayList<>(metrics);
-		}
+	/** Returns the raw list of all captured metrics. */
+	public List<JobMetric> getAllMetrics() {
+		return(new ArrayList<>(metrics));
+	}
+
+	public int getTotalRuns() {
+		return metrics.size();
+	}
+
+	public long getSuccessCount() {
+		return metrics.stream().filter(JobMetric::successful).count();
+	}
+
+	public long getFailureCount() {
+		return metrics.size() - getSuccessCount();
 	}
 
 	public double getSuccessPercentage() {
 		synchronized (metrics) {
-			if (metrics.isEmpty()) return 0.0;
+		if (metrics.isEmpty()) return 0.0;
 			long successCount = metrics.stream().filter(JobMetric::successful).count();
 			return (successCount * 100.0) / metrics.size();
 		}
@@ -35,11 +49,12 @@ public class JobMetricStatistics {
 
 	public double getFailurePercentage() {
 		synchronized (metrics) {
-			if (metrics.isEmpty()) return 0.0;
+		if (metrics.isEmpty()) return 0.0;
 			return 100.0 - getSuccessPercentage();
 		}
 	}
 
+	/** Returns a map of statistics grouped by Job Name. */
 	public Map<String, DoubleSummaryStatistics> getDurationStatsByJob() {
 		synchronized (metrics) {
 			return metrics.stream()
@@ -50,7 +65,13 @@ public class JobMetricStatistics {
 		}
 	}
 
+	/** Finds the single slowest execution in the current history. */
+	public Optional<JobMetric> getSlowestExecution() {
+		return metrics.stream().max(Comparator.comparingLong(JobMetric::durationMs));
+	}
+
 	public void clear() {
 		metrics.clear();
 	}
+
 }
