@@ -24,8 +24,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * <p>Used to mark a method for automatic scheduling via the {@link QuartzEngine}.</p>
- * * <p>The method signature must either be empty or accept a single
+ * <p>Used to mark a method for automatic scheduling via the {@link QuartzEngine}.
+ * The method signature must either be empty or accept a single
  * {@link org.quartz.JobExecutionContext} parameter.</p>
  *
  * <pre>
@@ -38,31 +38,31 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface QuartzEngineJob {
-	String UNDEFINED = "undefined";
+	String DEFAULT_GROUP = "undefined";
 
 	/**
 	 * <p>The Quartz Cron expression determining when the job fires. Quartz cron
 	 * expressions consist of 6 or 7 fields (Seconds, Minutes, Hours,
 	 * Day-of-Month, Month, Day-of-Week, Year).</p>
 	 *
-	 * @return a valid cron string
+	 * @return a valid cron string required
 	 */
 	String cronExpression();
 
 	/**
-	 * <p>The logical group name for this job. Groups allow you to categorize
+	 * <p>The logical group name for this job. Groups allow you to categorise
 	 * jobs for bulk operations like pausing or resuming all jobs in a group.</p>
 	 *
 	 * @return the group name, defaults to "undefined"
 	 */
-	String group() default UNDEFINED;
+	String group() default DEFAULT_GROUP;
 
 	/**
 	 * <p>A collection of static parameters passed to the job's {@code JobDataMap}.
 	 * These can be retrieved during execution via
 	 * {@code context.getMergedJobDataMap()}.</p>
 	 *
-	 * @return an array of strings
+	 * @return an array of strings defaults to an empty array of strings
 	 */
-	String[] parameters() default {}; // Changed from String to String[]
+	String[] parameters() default {};
 }
